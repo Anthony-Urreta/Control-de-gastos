@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Control financiero: divisas y bolívares</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>try{var t=localStorage.getItem("control_financiero_tema");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<style>
+/* Idea central: el dinero se apila. Cada mes y cada categoría es una pila sobre su repisa;
+   los volúmenes tienen canto claro a la izquierda y sombra a la derecha, como objetos reales. */
+:root{
+  color-scheme:light;
+  --bg:#F2F5F3; --c:#FFFFFF; --c2:#F6F9F7; --t:#10272C; --m:#566A6E; --b:#DCE5E2;
+  --ink:#08252D; --ink2:#0E3A44;
+  --in:#0B7A68; --in-l:#19C3A7; --in2:#DAF3ED;
+  --out:#C7364F; --out-l:#FF6F86; --out2:#FBE3E8;
+  --y:#FFB627; --y2:#FFF2D2; --on-y:#251800; --gap:#8A5800;
+  --wood:#E3EAE7;
+  --f:"Archivo","Segoe UI",system-ui,sans-serif;
+  --spring:cubic-bezier(.34,1.5,.55,1);
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+/* Tema: sigue al sistema hasta que la persona elige con el botón; la elección queda en data-theme */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0A171A; --c:#11242A; --c2:#162D34; --t:#E8F2F0; --m:#9DB6B8; --b:#21404A;
+  --in:#13907B; --in-l:#3ED9BD; --in2:#103631; --out:#D2405A; --out-l:#FF8A9C; --out2:#3A1C25;
+  --y2:#3A2D10; --gap:#FFB627; --wood:#1B353D;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0A171A; --c:#11242A; --c2:#162D34; --t:#E8F2F0; --m:#9DB6B8; --b:#21404A;
+  --in:#13907B; --in-l:#3ED9BD; --in2:#103631; --out:#D2405A; --out-l:#FF8A9C; --out2:#3A1C25;
+  --y2:#3A2D10; --gap:#FFB627; --wood:#1B353D;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 70px)}
+body{margin:0;background:var(--bg);color:var(--t);font:15.5px/1.5 var(--f);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+::selection{background:var(--y);color:var(--on-y)}
+h1,h2,h3{margin:0;line-height:1.15;font-weight:700}
+p{margin:0}
+button,input,select,textarea,summary{font:inherit;color:inherit}
+button,summary,select,label[for]{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.55}
+:focus-visible{outline:3px solid var(--y);outline-offset:2px}
+.num{font-stretch:115%;letter-spacing:-.01em}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+
+/* ---- Banner con las pilas reales de la semana ---- */
+.ban{position:relative;overflow:hidden;isolation:isolate;background:var(--ink);color:#fff}
+.ban::before{content:"";position:absolute;inset:0;z-index:-1;background:
+  radial-gradient(circle at 8% 130%,rgba(25,195,167,.38),transparent 46%),
+  radial-gradient(circle at 70% -60%,rgba(255,182,39,.22),transparent 45%)}
+.ban .wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;min-height:116px;padding-top:20px}
+.bt{padding-bottom:20px}
+.bt h1{font-size:clamp(1.7rem,4vw,2.6rem);font-weight:800;font-stretch:118%;letter-spacing:-.025em}
+.bt p{color:#B9D3D2;margin-top:4px;font-size:.95rem}
+.stack{display:flex;align-items:flex-end;gap:5px}
+.stack i{display:block;width:24px;border-radius:5px 5px 0 0;background:var(--sc);box-shadow:inset 0 -14px 0 rgba(0,0,0,.14),inset 4px 0 0 rgba(255,255,255,.22);transform-origin:bottom}
+.stack-cap{font-size:.75rem;color:#B9D3D2;text-align:right;margin-bottom:6px}
+@media (max-width:760px){ .ban .wrap{min-height:0} .stack-wrap{display:none} .bt{padding-bottom:16px} }
+
+/* ---- Barra de navegación ---- */
+.bar{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--c) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--b)}
+.bar .wrap{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding-top:8px;padding-bottom:8px}
+nav.tabs{display:flex;gap:2px;flex-wrap:wrap}
+nav.tabs button{position:relative;border:0;background:none;padding:9px 14px;border-radius:12px;color:var(--m);font-weight:700;min-height:42px}
+nav.tabs button:hover{color:var(--t);background:var(--c2)}
+nav.tabs button[aria-selected="true"]{color:var(--t)}
+nav.tabs button[aria-selected="true"]::after{content:"";position:absolute;left:14px;right:14px;bottom:3px;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--in-l) 0 33%,var(--y) 0 66%,var(--out-l) 0)}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cx{display:inline-flex;background:var(--bg);padding:3px;border-radius:12px;border:1px solid var(--b)}
+.cx button{border:0;background:transparent;padding:5px 13px;border-radius:9px;font-weight:700;min-height:34px}
+.cx button[aria-pressed="true"]{background:var(--t);color:var(--c)}
+.rate-now{font-size:.85rem;color:var(--m)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;border:1.5px solid var(--b);background:var(--c);color:var(--t);padding:8px 15px;border-radius:12px;font-weight:700;transition:border-color .15s,background .15s,transform .12s}
+.btn:hover{border-color:var(--t)}
+.btn:active{transform:translateY(1px)}
+.btn.sm{min-height:34px;padding:4px 11px;font-size:.88rem;border-radius:10px}
+.btn.pr{background:var(--ink2);border-color:var(--ink2);color:#fff}
+.btn.pr:hover{filter:brightness(1.15)}
+.btn.y{background:var(--y);border-color:var(--y);color:var(--on-y)}
+.btn.danger{color:var(--out)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn.pr{background:var(--y);border-color:var(--y);color:var(--on-y)} }
+:root[data-theme="dark"] .btn.pr{background:var(--y);border-color:var(--y);color:var(--on-y)}
+.theme{width:42px;padding:0}
+.theme svg{width:20px;height:20px}
+.theme .sun{display:none}
+:root[data-theme="dark"] .theme .sun{display:block}:root[data-theme="dark"] .theme .moon{display:none}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .theme .sun{display:block} :root:not([data-theme="light"]) .theme .moon{display:none} }
+.sync{gap:8px}
+.sync i{width:10px;height:10px;border-radius:50%;background:var(--m)}
+.sync[data-estado="ok"] i{background:var(--in-l)}
+.sync[data-estado="dirty"]{background:var(--y);border-color:var(--y);color:var(--on-y)}
+.sync[data-estado="dirty"] i{background:var(--out)}
+.sync[data-estado="busy"] i{background:var(--y);animation:latido 1s ease-in-out infinite}
+@keyframes latido{50%{opacity:.3}}
+dialog{border:1px solid var(--b);border-radius:20px;padding:0;background:var(--c);color:var(--t);width:min(560px,94vw);box-shadow:0 30px 70px -30px rgba(8,37,45,.6)}
+dialog::backdrop{background:rgba(8,37,45,.55);backdrop-filter:blur(3px)}
+.ghf{display:grid;gap:12px;padding:22px;border-top:8px solid var(--y);border-radius:20px}
+.ghf .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ghmsg{font-weight:700;min-height:1.4em}
+@media (max-width:600px){ .ghf .two{grid-template-columns:1fr} }
+details.more{position:relative}
+details.more summary{list-style:none}
+details.more summary::-webkit-details-marker{display:none}
+.menu{position:absolute;right:0;top:calc(100% + 8px);z-index:20;background:var(--c);border:1px solid var(--b);border-radius:14px;box-shadow:0 18px 40px -18px rgba(8,37,45,.45);padding:6px;min-width:220px;display:grid}
+.menu button,.menu label{display:block;text-align:left;border:0;background:none;padding:10px 12px;border-radius:9px;font-weight:700;min-height:44px}
+.menu button:hover,.menu label:hover{background:var(--c2)}
+.menu hr{border:0;border-top:1px solid var(--b);margin:4px 0}
+.banner{display:none;background:var(--y2);border-radius:12px;padding:10px 14px;margin:14px 0 0}
+
+main.wrap{padding-top:24px;padding-bottom:56px}
+.panel{display:none}.panel.on{display:block}
+.hero{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin:2px 0 18px}
+.hero h2{font-size:clamp(1.6rem,3.2vw,2.1rem);font-stretch:110%;letter-spacing:-.015em}
+.hero .m{color:var(--m);margin-top:4px}
+.m{color:var(--m)}
+.hint{color:var(--m);font-size:.9rem;margin-top:6px}
+
+/* ---- Tarjetas y repisas ---- */
+.card{background:var(--c);border:1px solid var(--b);border-radius:20px;padding:20px;min-width:0}
+.card h3{font-size:1.15rem;font-stretch:108%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.card h3 small{font-size:.88rem;font-weight:600;color:var(--m);font-stretch:100%}
+.shelf{border-radius:20px 20px 12px 12px;padding:18px 18px 0;display:flex;flex-direction:column}
+.shelf::after{content:"";display:block;height:14px;margin:0 -18px;border-radius:0 0 11px 11px;background:linear-gradient(var(--shelf2,var(--in2)),var(--shelf2,var(--in2))) top/100% 5px no-repeat,var(--wood);border-top:3px solid var(--shelf,var(--in-l))}
+
+/* Termómetro del BCV */
+.gauge{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;margin-bottom:18px;--shelf:var(--y);--shelf2:var(--y2)}
+.gauge .shelf{justify-content:space-between;gap:10px}
+.mini{display:flex;align-items:flex-end;gap:4px;height:92px;margin-top:6px}
+.mini i{flex:1 1 0;height:var(--h);border-radius:5px 5px 2px 2px;background:var(--sc);box-shadow:inset 3px 0 0 rgba(255,255,255,.25),inset -2px 0 0 rgba(0,0,0,.14);transition:transform .28s var(--spring)}
+.mini i:hover{transform:translateY(-5px)}
+.mini-cap{display:flex;justify-content:space-between;font-size:.8rem;color:var(--m);font-weight:700}
+.intro .mini i{animation:land .55s var(--spring) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+.rates{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:end}
+.rate small{display:block;color:var(--m);font-size:.9rem}
+.rate b{display:block;font-size:clamp(2rem,4.6vw,3.3rem);font-weight:800;font-stretch:120%;letter-spacing:-.03em;line-height:1}
+.rate.prev b{color:var(--m);font-size:clamp(1.5rem,3vw,2.1rem)}
+.rate.today{text-align:right}
+.chip{justify-self:center;align-self:center;display:inline-flex;align-items:center;gap:6px;background:var(--y);color:var(--on-y);border-radius:999px;padding:6px 14px 6px 10px;font-weight:800;font-stretch:110%;box-shadow:inset 0 -3px 0 rgba(0,0,0,.12)}
+.chip svg{width:15px;height:15px}
+.chip.down{background:var(--in-l)}
+.gauge-sub{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:16px;color:var(--m);font-size:.92rem}
+.loss{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;align-content:start}
+.loss .lbl{display:flex;align-items:center;gap:8px;color:var(--m);font-size:.9rem;font-weight:700}
+.loss .lbl::before,.k span::before{content:"";width:9px;height:16px;border-radius:3px 3px 1px 1px;background:var(--kc,var(--y));box-shadow:inset 2px 0 0 rgba(255,255,255,.35)}
+.loss b{display:block;font-size:clamp(1.6rem,3vw,2.15rem);font-weight:800;font-stretch:115%;letter-spacing:-.02em;color:var(--gap);line-height:1.1;margin-top:2px}
+.loss b.pos{color:var(--in)}
+.loss .bs{font-size:.85rem;color:var(--m)}
+.expo{grid-column:1/-1;border-top:1px dashed var(--b);padding-top:12px}
+.expo .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.expo .row b{font-size:1.25rem;font-stretch:112%;color:var(--t)}
+.meter{height:12px;border-radius:999px;background:var(--c2);border:1px solid var(--b);overflow:hidden;margin:10px 0 8px}
+.meter i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--in-l),var(--y) 65%,var(--out-l));box-shadow:inset 0 -3px 0 rgba(0,0,0,.1);transition:width .8s var(--spring)}
+.expo p{font-size:.9rem;color:var(--m)}
+
+/* Indicadores */
+.k{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;background:var(--c);border:1px solid var(--b);border-radius:20px;margin-bottom:18px;overflow:hidden}
+.k>div{padding:16px 20px;border-left:1px solid var(--b);min-width:0}
+.k>div:first-child{border-left:0;background:var(--y2)}
+.k span{display:flex;align-items:center;gap:8px;color:var(--m);font-size:.88rem;font-weight:700}
+.k b{display:block;font-size:clamp(1.4rem,2.5vw,1.9rem);font-weight:800;font-stretch:115%;letter-spacing:-.02em;line-height:1.2;margin-top:4px;white-space:nowrap}
+.k small{display:block;color:var(--m);font-size:.85rem}
+.k-cash{--kc:var(--y)} .k-cash b{font-size:clamp(1.6rem,3vw,2.3rem)}
+.k-in{--kc:var(--in-l)} .k-in b{color:var(--in)}
+.k-out{--kc:var(--out-l)} .k-out b{color:var(--out)}
+.k-net{--kc:var(--t)}
+.k b.neg{color:var(--out)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;margin-bottom:18px}
+
+/* Pilas: cada volumen es un bloque con canto claro y sombra lateral */
+.piles{flex:1;display:flex;align-items:flex-end;gap:14px;padding:26px 2px 0;overflow-x:auto;scrollbar-width:thin;min-height:260px}
+.grp{display:flex;flex-direction:column;align-items:stretch;flex:1 1 0;min-width:84px}
+.grp .pair{display:flex;align-items:flex-end;gap:5px;justify-content:center}
+.grp .net{font-size:.8rem;font-weight:700;color:var(--m);text-align:center;margin-bottom:6px;white-space:nowrap}
+.grp .net b{color:var(--t)}
+.grp .lab{order:3;text-align:center;font-weight:700;font-size:.85rem;color:var(--m);padding:8px 0 6px;text-transform:capitalize}
+.vol{--vc:var(--in);flex:1 1 0;min-width:34px;max-width:72px;height:var(--h,120px);position:relative;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:8px 6px;border:0;border-radius:9px 9px 3px 3px;color:#fff;background:var(--vc);font-weight:800;font-size:.78rem;line-height:1.15;text-align:left;
+  box-shadow:inset 6px 0 0 rgba(255,255,255,.16),inset -4px 0 0 rgba(0,0,0,.16);transform-origin:bottom center;transition:transform .28s var(--spring),box-shadow .2s}
+.vol::before{content:"";position:absolute;left:6px;right:6px;top:14px;height:8px;border-block:2px solid rgba(255,255,255,.38)}
+.vol.out{--vc:var(--out)}
+.vol:hover,.vol:focus-visible{transform:translateY(-7px);box-shadow:inset 6px 0 0 rgba(255,255,255,.16),inset -4px 0 0 rgba(0,0,0,.16),0 14px 20px -12px var(--vc)}
+.vol .v{font-stretch:105%;word-break:break-all}
+.vol.short .v{display:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;font-weight:700;color:var(--m)}
+.legend i{display:inline-block;width:9px;height:15px;border-radius:3px 3px 1px 1px;margin-right:6px;vertical-align:-2px;background:var(--lc)}
+/* Categorías: lomos con el nombre escrito de abajo hacia arriba */
+.cats{gap:7px}
+.cat{--vc:var(--out);flex:1 1 0;min-width:46px;max-width:92px;padding:10px 7px 9px;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+.cat:nth-child(3n+2){--vc:color-mix(in srgb,var(--out) 82%,#000)}
+.cat:nth-child(3n){--vc:color-mix(in srgb,var(--out) 70%,var(--y))}
+.cat .nm{writing-mode:vertical-rl;transform:rotate(180deg);font-size:.85rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:calc(var(--h) - 54px)}
+.cat .pc{font-size:.78rem;font-weight:800}
+.cat::before{top:auto;bottom:38px}
+.cats-shelf{--shelf:var(--out-l);--shelf2:var(--out2)}
+.readout{min-height:1.5em;margin:4px 0 2px;font-weight:700;font-size:.92rem;color:var(--t)}
+.vol.sel{transform:translateY(-12px) rotate(-1deg);box-shadow:inset 6px 0 0 rgba(255,255,255,.16),inset -4px 0 0 rgba(0,0,0,.16),0 16px 22px -12px var(--vc)}
+.vol.sel::after{content:"";position:absolute;top:-3px;right:8px;width:11px;height:30px;background:var(--y);clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%)}
+.empty-pile{color:var(--m);text-align:center;width:100%;align-self:center;padding:40px 0}
+
+/* Llegada al estante, una sola vez */
+.intro .vol,.intro .stack i{animation:land .55s var(--spring) backwards;animation-delay:calc(var(--i,0) * 40ms)}
+@keyframes land{from{transform:translateY(-34px) scaleY(.9);opacity:0}}
+
+.chart{position:relative;height:290px}
+.nochart{color:var(--m);padding:40px 0;text-align:center}
+.seg{display:inline-flex;background:var(--bg);padding:3px;border-radius:12px;border:1px solid var(--b)}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:9px;font-weight:700;font-size:.88rem;color:var(--m);min-height:34px}
+.seg button[aria-pressed="true"]{background:var(--t);color:var(--c)}
+
+/* Formularios y tablas */
+form.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end;margin-top:14px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:.85rem;color:var(--m);font-weight:700}
+.fld input,.fld select,.fld textarea,.filters input,.filters select{border:1.5px solid var(--b);background:var(--c2);border-radius:12px;padding:9px 12px;width:100%;min-height:44px}
+.fld input:focus,.fld select:focus,.fld textarea:focus,.filters input:focus,.filters select:focus{outline:none;border-color:var(--in);box-shadow:0 0 0 3px var(--in2)}
+.fld textarea{min-height:80px;resize:vertical}
+.fld.wide{grid-column:1/-1}
+.rate-help{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.form-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.filters{display:grid;grid-template-columns:2fr repeat(4,1fr);gap:8px;margin:14px 0 12px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.94rem}
+th,td{padding:10px 12px;border-bottom:1px solid var(--b);text-align:left;vertical-align:top}
+th{font-weight:700;font-size:.85rem;color:var(--m);white-space:nowrap;position:sticky;top:0;background:var(--c2)}
+tbody tr:hover td{background:var(--c2)}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+td.obs{min-width:220px;max-width:420px}
+tfoot td{font-weight:800;border-top:2px solid var(--b)}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.82rem;font-weight:800}
+.tag::before{content:"";width:6px;height:11px;border-radius:2px 2px 1px 1px;background:currentColor}
+.tag.in{background:var(--in2);color:var(--in)} .tag.out{background:var(--out2);color:var(--out)}
+.pos{color:var(--in)} .neg{color:var(--out)}
+mark{background:var(--y2);color:inherit;padding:0 2px;border-radius:3px}
+.empty{color:var(--m);text-align:center;padding:28px}
+.formula{background:var(--c2);border:1px solid var(--b);border-radius:12px;padding:12px 14px;margin:8px 0;overflow-x:auto;white-space:pre;font-family:ui-monospace,Consolas,monospace;font-size:.88rem}
+.doc{max-width:78ch}
+.doc h2{font-size:1.15rem;margin:24px 0 6px}
+.doc p{margin:6px 0}
+.mb{margin-bottom:18px}
+
+@media (max-width:980px){ .gauge,.grid{grid-template-columns:1fr} .filters{grid-template-columns:1fr 1fr} }
+@media (max-width:720px){ .k{grid-template-columns:1fr 1fr} .k>div:first-child{grid-column:1/-1} .k>div:nth-child(2){border-left:0} .k>div:nth-child(n+2){border-top:1px solid var(--b)} }
+@media (max-width:600px){
+  .wrap{padding:0 14px}
+  nav.tabs{width:100%;justify-content:space-between}
+  nav.tabs button{padding:9px 8px;font-size:.92rem}
+  .tools{width:100%}.rate-now{flex:1}
+  .rates{grid-template-columns:1fr 1fr}.chip{grid-column:1/-1;grid-row:2;justify-self:start}
+  .loss{grid-template-columns:1fr 1fr}
+  .k b{font-size:1.3rem}
+  .piles{gap:8px}.grp{min-width:72px}
+  .vol .v{display:none}
+  .rate-now{display:none}
+  .tools{justify-content:flex-end}
+  .btn{min-height:44px}
+}
+@media (prefers-reduced-motion:reduce){ *,*::before,*::after{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+<div class="ban">
+  <div class="wrap">
+    <div class="bt"><h1>Control financiero</h1><p>Entradas, salidas y pérdida por la variación diaria del dólar BCV</p></div>
+    <div class="stack-wrap" aria-hidden="true"><p class="stack-cap" id="stackCap"></p><div class="stack" id="stack"></div></div>
+  </div>
+</div>
+<header class="bar">
+  <div class="wrap">
+    <nav class="tabs" role="tablist" aria-label="Secciones">
+      <button role="tab" id="tab-dash" aria-controls="p-dash" aria-selected="true" data-tab="dash">Panel</button>
+      <button role="tab" id="tab-mov" aria-controls="p-mov" aria-selected="false" tabindex="-1" data-tab="mov">Movimientos</button>
+      <button role="tab" id="tab-tasas" aria-controls="p-tasas" aria-selected="false" tabindex="-1" data-tab="tasas">Tasas BCV</button>
+      <button role="tab" id="tab-formulas" aria-controls="p-formulas" aria-selected="false" tabindex="-1" data-tab="formulas">Fórmulas</button>
+    </nav>
+    <div class="tools">
+      <span class="cx" role="group" aria-label="Divisa base"><button data-d="$" aria-pressed="true">US$</button><button data-d="€" aria-pressed="false">€</button></span>
+      <span class="rate-now" id="rateNow"></span>
+      <button class="btn theme" id="bTema" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 1 1 9.8 3.5a6.8 6.8 0 0 0 10.7 10.7z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+      </button>
+      <button class="btn sync" id="bSync" type="button" data-estado="off"><i aria-hidden="true"></i><span id="syncTxt">Conectar GitHub</span></button>
+      <button id="bCsv" hidden>Exportar CSV</button>
+      <details class="more">
+        <summary class="btn" aria-label="Más acciones">Más</summary>
+        <div class="menu">
+          <button id="bGhCfg">Conexión con GitHub</button>
+          <button id="bGhPull">Traer datos de GitHub</button>
+          <button id="bGhPush">Guardar en GitHub</button>
+          <hr>
+          <button id="bCsv2">Exportar CSV</button>
+          <button id="bBackup">Descargar respaldo</button>
+          <label for="fImport">Restaurar respaldo</label>
+          <button id="bDemo">Cargar ejemplo</button>
+          <hr>
+          <button id="bReset" class="danger">Borrar todo</button>
+        </div>
+      </details>
+      <input type="file" id="fImport" accept=".json" hidden>
+      <select id="cfgDiv" hidden aria-hidden="true"><option value="$">$</option><option value="€">€</option></select>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner">Este navegador no permite guardar datos aquí: lo que registres se pierde al cerrar. Descarga un respaldo antes de salir, o abre el archivo directamente desde tu computadora.</div>
+
+  <section class="panel on" id="p-dash" role="tabpanel" aria-labelledby="tab-dash">
+    <div class="hero">
+      <div><h2>Variación diaria del dólar BCV</h2><p class="m" id="gFecha"></p></div>
+      <div class="tools"><button class="btn y" type="button" data-fetch-rate>Traer tasa del día</button></div>
+    </div>
+
+    <div class="gauge">
+      <div class="card shelf">
+        <div class="rates">
+          <div class="rate prev"><small id="gPrevF">BCV anterior</small><b class="num" id="gPrev">Sin registro</b></div>
+          <span class="chip" id="gChip"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3l5 6H9.5v4h-3V9H3z" fill="currentColor"/></svg><span id="gPct">Sin variación</span></span>
+          <div class="rate today"><small>BCV de hoy, Bs por divisa</small><b class="num" id="gBcv">Sin registro</b></div>
+        </div>
+        <p class="hint" id="gStatus" role="status"></p>
+        <div><div class="mini-cap"><span>Variación diaria, últimos 14 registros</span><span id="miniRange"></span></div><div class="mini" id="mini"></div></div>
+      </div>
+      <div class="card loss">
+        <div><span class="lbl">Pérdida de hoy</span><b class="num" id="gLossDay">0,00</b><span class="bs" id="gLossDayBs"></span></div>
+        <div><span class="lbl">Pérdida acumulada</span><b class="num" id="gLossAcc">0,00</b><span class="bs" id="gLossAccBs"></span></div>
+        <div class="expo">
+          <div class="row"><span class="m">Saldo en Bs expuesto a la devaluación</span><b class="num" id="gExpo">Bs 0,00</b></div>
+          <div class="meter" aria-hidden="true"><i id="gMeter"></i></div>
+          <p id="gPar"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="k" id="kpis"></div>
+
+    <div class="grid">
+      <div class="card shelf">
+        <h3><span>Flujo de caja</span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="seg" id="segPer"><button aria-pressed="false" data-v="semana">Semana</button><button aria-pressed="true" data-v="mes">Mes</button></span>
+            <span class="seg" id="segUni"><button aria-pressed="true" data-v="div">Divisas</button><button aria-pressed="false" data-v="bs">Bs</button></span>
+          </span></h3>
+        <div class="legend" style="margin-top:8px"><span><i style="--lc:var(--in)"></i>Entradas</span><span><i style="--lc:var(--out)"></i>Salidas</span><span>Encima de cada pila: el neto del período</span></div>
+        <div class="piles" id="pFlujo"></div>
+        <p class="readout" id="rFlujo" aria-live="polite"></p>
+      </div>
+      <div class="card shelf cats-shelf">
+        <h3><span>¿En qué se va el dinero?</span><small>Salidas por categoría, en divisas</small></h3>
+        <div class="piles cats" id="pCat"></div>
+        <p class="readout" id="rCat" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div class="card mb">
+      <h3><span>Pérdida por variación del BCV, día a día</span><small>Barras: pérdida del día. Línea: acumulada. En divisas.</small></h3>
+      <div class="chart"><canvas id="cLoss"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3><span>Últimos movimientos</span><button class="btn sm" data-goto="mov">Ver todos</button></h3>
+      <div class="tbl-wrap" style="margin-top:10px"><table id="tLast"></table></div>
+    </div>
+  </section>
+
+  <!-- MOVIMIENTOS -->
+  <section class="panel" id="p-mov" role="tabpanel" aria-labelledby="tab-mov">
+    <div class="card mb">
+      <h3 id="fTxTitle">Registrar movimiento</h3>
+      <form class="f" id="fTx" autocomplete="off">
+        <div class="fld"><label for="tFecha">Fecha</label><input type="date" id="tFecha" required></div>
+        <div class="fld"><label for="tTipo">Tipo</label>
+          <select id="tTipo"><option value="entrada">Entrada</option><option value="salida">Salida</option></select></div>
+        <div class="fld"><label for="tCat">Categoría</label><input id="tCat" list="dlCats" required placeholder="Ventas, Inventario…"></div>
+        <datalist id="dlCats"></datalist>
+        <div class="fld"><label for="tLiq">El dinero se movió en</label>
+          <select id="tLiq"><option value="bs">Bolívares (transferencia, pago móvil, punto)</option><option value="div">Divisas (efectivo, Zelle, cuenta)</option></select></div>
+        <div class="fld"><label for="tDiv">Monto en divisas</label><input type="number" id="tDiv" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="fld"><label for="tTasa">Tasa aplicada (Bs por divisa)</label><input type="number" id="tTasa" step="0.0001" min="0" inputmode="decimal" required>
+          <div class="rate-help"><button type="button" class="btn sm" id="useBcv">Usar BCV</button><button type="button" class="btn sm" id="usePar">Usar paralela</button></div></div>
+        <div class="fld"><label for="tBs">Monto en Bs</label><input type="number" id="tBs" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="fld wide"><label for="tObs">Observaciones o notas</label><textarea id="tObs" placeholder="Pago a proveedor X, factura #123, cliente, referencia bancaria…"></textarea></div>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" id="tSave">Guardar movimiento</button>
+          <button class="btn" type="button" id="tCancel" hidden>Cancelar edición</button>
+        </div>
+      </form>
+      <p class="hint">Escribe el monto en divisas o en Bs: el otro se calcula con la tasa. Al cambiar la fecha se propone la tasa del día según dónde se movió el dinero.</p>
+    </div>
+
+    <div class="card">
+      <h3>Historial y búsqueda <small id="fCount"></small></h3>
+      <div class="filters">
+        <input id="qText" placeholder="Buscar en observaciones o categoría" aria-label="Buscar">
+        <select id="qTipo" aria-label="Tipo"><option value="">Todos los tipos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select>
+        <select id="qCat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+        <input type="date" id="qDesde" aria-label="Desde">
+        <input type="date" id="qHasta" aria-label="Hasta">
+      </div>
+      <div class="tbl-wrap"><table id="tMov"></table></div>
+    </div>
+  </section>
+
+  <!-- TASAS -->
+  <section class="panel" id="p-tasas" role="tabpanel" aria-labelledby="tab-tasas">
+    <div class="card mb">
+      <h3>Registrar tasas del día</h3>
+      <form class="f" id="fRate">
+        <div class="fld"><label for="rFecha">Fecha</label><input type="date" id="rFecha" required></div>
+        <div class="fld"><label for="rBcv">Tasa oficial BCV</label><input type="number" id="rBcv" step="0.0001" min="0" required inputmode="decimal"></div>
+        <div class="fld"><label for="rPar">Tasa paralela (opcional, solo referencia)</label><input type="number" id="rPar" step="0.0001" min="0" inputmode="decimal"></div>
+        <div class="form-actions"><button class="btn primary" type="submit">Guardar tasas</button><button class="btn" type="button" data-fetch-rate>Traer tasa del día</button></div>
+      </form>
+      <p class="hint" id="rStatus" role="status"></p>
+      <p class="hint">Si ya existe un registro con esa fecha, se reemplaza. Los días sin registro usan la última tasa conocida.</p>
+    </div>
+    <div class="card mb">
+      <h3>Evolución del BCV y su variación diaria</h3>
+      <div class="chart"><canvas id="cRates"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Detalle diario de la pérdida por variación BCV</h3>
+      <div class="tbl-wrap"><table id="tRates"></table></div>
+    </div>
+  </section>
+
+  <!-- FÓRMULAS -->
+  <section class="panel" id="p-formulas" role="tabpanel" aria-labelledby="tab-formulas">
+    <div class="card doc">
+      <h2>Cómo se calcula cada cifra</h2>
+      <p>Todas las pérdidas se miden con la variación diaria del dólar BCV y se expresan en la divisa base y su equivalente en Bs al BCV del día. Signo negativo significa pérdida; positivo, ganancia.</p>
+
+      <h2>Conversión de cada movimiento</h2>
+      <div class="formula">Monto Bs      = Monto divisas × Tasa aplicada
+Monto divisas = Monto Bs ÷ Tasa aplicada</div>
+
+      <h2>Variación diaria del dólar BCV</h2>
+      <div class="formula">Variación Bs = BCV hoy − BCV del registro anterior
+Variación %  = (BCV hoy ÷ BCV anterior − 1) × 100</div>
+
+      <h2>Pérdida por tenencia (devaluación de los Bs guardados)</h2>
+      <p>Mide cuántas divisas pierde el saldo en Bs que mantienes cuando sube el BCV de un día a otro.</p>
+      <div class="formula">Impacto día = Saldo Bs al cierre anterior × (1 ÷ BCV hoy − 1 ÷ BCV anterior)</div>
+      <p>Ejemplo: con Bs 100.000 guardados y el BCV pasando de 200 a 202, tu saldo valía $500,00 y ahora vale $495,05: pierdes $4,95.</p>
+
+      <h2>Diferencia por movimiento (cobrar o pagar en Bs a una tasa distinta al BCV del día)</h2>
+      <p>Si cobras a una tasa vieja o menor que el BCV del día, recibes menos de lo facturado. Si el movimiento se hizo exactamente al BCV del día, la diferencia es cero.</p>
+      <div class="formula">Entrada: Impacto = (Monto Bs ÷ BCV del día) − Monto divisas
+Salida:  Impacto = Monto divisas − (Monto Bs ÷ BCV del día)</div>
+
+      <h2>Pérdida del día y acumulada</h2>
+      <div class="formula">Pérdida del día   = Impacto tenencia + Σ Impacto de los movimientos del día
+Pérdida acumulada = Σ Pérdida del día desde el primer registro
+Equivalente en Bs = Pérdida en divisas × BCV del día</div>
+
+      <h2>Tasa paralela</h2>
+      <p>Es opcional y solo se muestra como referencia. No interviene en ningún cálculo de pérdida.</p>
+
+      <h2>Saldos y balance</h2>
+      <div class="formula">Total entradas ($ y Bs) = Σ montos de movimientos tipo Entrada
+Total salidas ($ y Bs)  = Σ montos de movimientos tipo Salida
+Balance neto            = Total entradas − Total salidas
+Caja en Bs              = Σ Bs de entradas liquidadas en Bs − Σ Bs de salidas liquidadas en Bs
+Caja en divisas         = Σ divisas de entradas liquidadas en divisas − Σ de salidas liquidadas en divisas
+Caja disponible         = Caja en divisas + Caja en Bs ÷ BCV de hoy</div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dGh" aria-labelledby="ghTitle">
+  <form id="fGh" class="ghf">
+    <h3 id="ghTitle">Conexión con GitHub</h3>
+    <p class="m">Los datos se guardan como un archivo JSON en tu repositorio. Esta configuración y el token quedan solo en este dispositivo.</p>
+    <div class="two">
+      <div class="fld"><label for="ghO">Usuario u organización</label><input id="ghO" required autocomplete="off" spellcheck="false" placeholder="mi-usuario"></div>
+      <div class="fld"><label for="ghR">Repositorio</label><input id="ghR" required autocomplete="off" spellcheck="false" placeholder="control-financiero"></div>
+      <div class="fld"><label for="ghB">Rama</label><input id="ghB" autocomplete="off" spellcheck="false" placeholder="main"></div>
+      <div class="fld"><label for="ghP">Archivo de datos</label><input id="ghP" autocomplete="off" spellcheck="false" placeholder="data.json"></div>
+    </div>
+    <div class="fld"><label for="ghT">Token de acceso (fine-grained, permiso Contents: Read and write)</label><input id="ghT" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></div>
+    <p class="hint">Sin token solo se pueden leer los datos de un repositorio público. Para guardar, o si el repositorio es privado, el token es obligatorio.</p>
+    <p class="ghmsg" id="ghMsg" role="status"></p>
+    <div class="form-actions">
+      <button class="btn pr" id="ghOk" type="submit">Probar y conectar</button>
+      <button class="btn" id="ghCancel" type="button">Cancelar</button>
+      <button class="btn danger" id="ghOff" type="button" hidden>Desconectar</button>
+    </div>
+  </form>
+</dialog>
+<script>
+(function(){
+"use strict";
+const KEY = "control_financiero_v1";
+const DEFAULT_CATS = ["Ventas","Servicios","Cobranza","Inventario","Comida","Nómina","Servicios públicos","Alquiler","Transporte","Impuestos","Otros"];
+let state = { tx: [], tasas: [], cfg: { div: "$" } };
+let canStore = true;
+const charts = {};
+const ui = { per: "mes", uni: "div", editId: null, lastEdited: "div" };
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,"0");
+const iso = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const hoy = () => iso(new Date());
+const addDays = (s,n) => { const d = new Date(s+"T00:00:00"); d.setDate(d.getDate()+n); return iso(d); };
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+const fmt = (n,d=2) => (isFinite(n)?n:0).toLocaleString("es-VE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fD = n => state.cfg.div+" "+fmt(n);
+const fB = n => "Bs "+fmt(n);
+const fDate = s => { const [y,m,d] = s.split("-"); return d+"/"+m+"/"+y; };
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------- Persistencia ---------- */
+function load(){
+  try { const raw = localStorage.getItem(KEY); if (raw) { state = Object.assign(state, JSON.parse(raw)); return true; } return false; }
+  catch(e){ canStore = false; return false; }
+}
+function save(opt){
+  if (!(opt && opt.remoto) && typeof sync!=="undefined"){ sync.dirty = true; grabarLS(KEY_SYNC, sync); if (typeof pintarSync==="function") pintarSync(); }
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch(e){ canStore = false; }
+  $("#banner").style.display = canStore ? "none" : "block";
+}
+
+/* ---------- Tasas ---------- */
+const tasasOrd = () => [...state.tasas].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+function tasaDe(f){
+  const t = tasasOrd(); let r = null;
+  for (const x of t){ if (x.fecha <= f) r = x; else break; }
+  return r || t[0] || null;
+}
+
+/* ---------- Motor de cálculo ---------- */
+function calcular(){
+  const tx = [...state.tx].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const tasas = tasasOrd();
+  let eD=0,eB=0,sD=0,sB=0,cajaBs=0,cajaDiv=0;
+  for (const t of tx){
+    const sg = t.tipo==="entrada" ? 1 : -1;
+    if (sg>0){ eD+=t.div; eB+=t.bs; } else { sD+=t.div; sB+=t.bs; }
+    if (t.liq==="bs") cajaBs += sg*t.bs; else cajaDiv += sg*t.div;
+  }
+  const saldoBsHasta = f => { let s=0; for (const t of tx){ if (t.fecha>f) break; if (t.liq==="bs") s += (t.tipo==="entrada"?1:-1)*t.bs; } return s; };
+
+  // Impacto por día en divisas, medido con la variación del BCV. Negativo = pérdida.
+  const dias = {};
+  const dia = f => dias[f] || (dias[f] = { ten:0, trx:0, saldoBs:0 });
+  for (let i=1;i<tasas.length;i++){
+    const b0 = tasas[i-1].bcv, b1 = tasas[i].bcv;
+    const sb = saldoBsHasta(addDays(tasas[i].fecha,-1));
+    const d = dia(tasas[i].fecha);
+    d.ten += sb*(1/b1 - 1/b0); d.saldoBs = sb;
+  }
+  // Diferencia de cada movimiento en Bs frente al BCV de su fecha
+  const impTx = {};
+  for (const t of tx){
+    if (t.liq!=="bs") { impTx[t.id]=0; continue; }
+    const r = tasaDe(t.fecha); const B = r ? r.bcv : t.tasa;
+    const imp = t.tipo==="entrada" ? (t.bs/B - t.div) : (t.div - t.bs/B);
+    impTx[t.id] = imp; dia(t.fecha).trx += imp;
+  }
+  const serie = Object.keys(dias).sort().map(f => ({ fecha:f, ...dias[f], total: dias[f].ten + dias[f].trx }));
+  let acc = 0; for (const s of serie){ acc += s.total; s.acc = acc; const r = tasaDe(s.fecha); s.bcv = r ? r.bcv : 0; }
+
+  const ref = tasaDe(hoy());
+  const idx = ref ? tasas.findIndex(t=>t.fecha===ref.fecha) : -1;
+  const prev = idx>0 ? tasas[idx-1] : null;
+  const fRef = ref ? ref.fecha : hoy();
+  const diaRef = dias[fRef] ? dias[fRef].ten + dias[fRef].trx : 0;
+  const varBs = (ref && prev) ? ref.bcv - prev.bcv : 0;
+  const varPct = (ref && prev) ? (ref.bcv/prev.bcv - 1)*100 : 0;
+  return { eD,eB,sD,sB,nD:eD-sD,nB:eB-sB,cajaBs,cajaDiv,ref,prev,fRef,diaRef,acc,varBs,varPct,serie,impTx,
+           valorReal: cajaDiv + (ref ? cajaBs/ref.bcv : 0) };
+}
+
+/* ---------- Render: panel ---------- */
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let primera = true;
+function contar(el, valor, fmtFn){
+  if (!el) return;
+  const prev = el.dataset.v===undefined ? 0 : +el.dataset.v; el.dataset.v = valor;
+  if (reduce || prev===valor){ el.textContent = fmtFn(valor); return; }
+  const t0 = performance.now(), d = 650;
+  const step = t => { const k = Math.min(1,(t-t0)/d), e = 1-Math.pow(1-k,3); el.textContent = fmtFn(prev+(valor-prev)*e); if (k<1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function renderDash(c){
+  const r = c.ref, pv = c.prev;
+  $("#gFecha").textContent = r ? "Corte al "+fDate(r.fecha)+(r.fecha!==hoy()?" (último registro; aún no hay tasa de hoy).":". Toca una pila para ver su monto exacto.") : "Registra la tasa BCV del día en la pestaña Tasas BCV.";
+  $("#rateNow").textContent = r ? "BCV "+fmt(r.bcv)+" al "+fDate(r.fecha).slice(0,5) : "";
+  if (r) contar($("#gBcv"), r.bcv, v=>fmt(v)); else $("#gBcv").textContent = "Sin registro";
+  $("#gPrev").textContent = pv ? fmt(pv.bcv) : "Sin registro";
+  $("#gPrevF").textContent = pv ? "BCV anterior ("+fDate(pv.fecha)+")" : "BCV anterior";
+  $("#gPct").textContent = pv ? (c.varPct>=0?"+":"")+fmt(c.varPct,2)+" % ("+(c.varBs>=0?"+":"")+fmt(c.varBs)+" Bs)" : "Sin variación";
+  $("#gChip").classList.toggle("down", c.varBs<0);
+  $("#gChip svg").style.transform = c.varBs<0 ? "rotate(180deg)" : "";
+  const sg = v => (v<-0.0049?"−":v>0.0049?"+":"")+state.cfg.div+" "+fmt(Math.abs(v));
+  contar($("#gLossDay"), c.diaRef, sg); $("#gLossDay").className = "num"+(c.diaRef<-0.0049?"":" pos");
+  contar($("#gLossAcc"), c.acc, sg);   $("#gLossAcc").className = "num"+(c.acc<-0.0049?"":" pos");
+  $("#gLossDayBs").textContent = r ? "≈ "+fB(Math.abs(c.diaRef)*r.bcv)+" al BCV de hoy" : "";
+  $("#gLossAccBs").textContent = r ? "≈ "+fB(Math.abs(c.acc)*r.bcv)+" al BCV de hoy" : "";
+  contar($("#gExpo"), c.cajaBs, fB);
+  const caja = Math.max(c.valorReal, 0.01), expoDiv = r ? Math.max(c.cajaBs,0)/r.bcv : 0, pct = Math.min(100, expoDiv/caja*100);
+  $("#gMeter").style.width = pct.toFixed(1)+"%";
+  $("#gPar").textContent = r ? fmt(pct,0)+" % de tu caja está en Bs. Cada 1 % que sube el BCV, pierdes "+fD(expoDiv*0.0099)+"."+((r.par)?" Paralela de referencia: "+fmt(r.par)+".":"") : "";
+
+  $("#kpis").innerHTML = `
+    <div class="k-cash"><span>Caja disponible a tasa BCV</span><b class="num" data-k="cash"></b><small>${fD(c.cajaDiv)} en divisas + ${fB(c.cajaBs)}</small></div>
+    <div class="k-in"><span>Total entradas</span><b class="num" data-k="in"></b><small>${fB(c.eB)}</small></div>
+    <div class="k-out"><span>Total salidas</span><b class="num" data-k="out"></b><small>${fB(c.sB)}</small></div>
+    <div class="k-net"><span>Balance neto</span><b class="num ${c.nD<0?"neg":""}" data-k="net"></b><small>${fB(c.nB)}</small></div>`;
+  const prevK = ui.k || {}; ui.k = {cash:c.valorReal,in:c.eD,out:c.sD,net:c.nD};
+  document.querySelectorAll("#kpis [data-k]").forEach(el=>{ el.dataset.v = prevK[el.dataset.k]||0; contar(el, ui.k[el.dataset.k], fD); });
+
+  const last = [...state.tx].sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.id.localeCompare(a.id)).slice(0,6);
+  $("#tLast").innerHTML = last.length ? head(false)+"<tbody>"+last.map(t=>row(t,c,false)).join("")+"</tbody>"
+    : `<tbody><tr><td class="empty">Aún no hay movimientos. Registra el primero en la pestaña Movimientos.</td></tr></tbody>`;
+
+  pilaSemana(); pilaMini(); pilasFlujo(); pilasCat();
+  if (primera){ document.body.classList.add("intro"); setTimeout(()=>document.body.classList.remove("intro"), 1600); primera = false; }
+  if (typeof Chart === "undefined") return noCharts();
+  chartLoss(c);
+}
+
+/* ---------- Pilas (HTML, sin librería) ---------- */
+const altura = (v, mx, min, max) => Math.round(min + (max-min) * (mx ? Math.max(0,v)/mx : 0));
+function pilaSemana(){
+  const t = tasasOrd().slice(-8); const el = $("#stack"); if (t.length<2){ el.innerHTML=""; $("#stackCap").textContent=""; return; }
+  const v = t.slice(1).map((r,i)=>(r.bcv/t[i].bcv-1)*100), mx = Math.max(...v.map(Math.abs), .01);
+  const col = x => x<0 ? "var(--in-l)" : x/mx>.75 ? "var(--out-l)" : x/mx>.4 ? "var(--y)" : "#7FD3C3";
+  el.innerHTML = v.map((x,i)=>`<i style="height:${altura(Math.abs(x),mx,18,84)}px;--sc:${col(x)};--i:${i}" title="${fDate(t[i+1].fecha)}: ${(x>=0?"+":"")+fmt(x,2)} %"></i>`).join("");
+  $("#stackCap").textContent = "Variación BCV, últimos 7 registros";
+}
+function pilaMini(){
+  const t = tasasOrd().slice(-15); const el = $("#mini"); if (t.length<2){ el.innerHTML=""; $("#miniRange").textContent=""; return; }
+  const v = t.slice(1).map((r,i)=>(r.bcv/t[i].bcv-1)*100), mx = Math.max(...v.map(Math.abs), .01);
+  el.innerHTML = v.map((x,i)=>`<i style="--h:${altura(Math.abs(x),mx,10,88)}px;--sc:${x<0?"var(--in-l)":x/mx>.75?"var(--out-l)":x/mx>.4?"var(--y)":"#7FD3C3"};--i:${i}" title="${fDate(t[i+1].fecha)}: ${(x>=0?"+":"")+fmt(x,2)} %"></i>`).join("");
+  $("#miniRange").textContent = fDate(t[1].fecha).slice(0,5)+" al "+fDate(t[t.length-1].fecha).slice(0,5);
+}
+function pilasFlujo(){
+  const g = {};
+  state.tx.forEach(t=>{ const k = keyPer(t.fecha); g[k] = g[k]||{e:0,s:0}; const v = ui.uni==="div"?t.div:t.bs; t.tipo==="entrada"? g[k].e+=v : g[k].s+=v; });
+  const keys = Object.keys(g).sort(); const el = $("#pFlujo");
+  if (!keys.length){ el.innerHTML = '<p class="empty-pile">Aún no hay movimientos para apilar.</p>'; return; }
+  const mx = Math.max(...keys.map(k=>Math.max(g[k].e,g[k].s)));
+  const pref = ui.uni==="div" ? state.cfg.div+" " : "Bs ";
+  const corto = v => v>=1e6 ? fmt(v/1e6,1)+" M" : v>=1e4 ? fmt(v/1e3,0)+" mil" : fmt(v,0);
+  let i = 0;
+  $("#rFlujo").textContent = "";
+  el.innerHTML = keys.map(k=>{
+    const lab = ui.per==="mes" ? new Date(k+"-01T00:00:00").toLocaleDateString("es-VE",{month:"short",year:"2-digit"}) : "Sem. "+fDate(k).slice(0,5);
+    const n = g[k].e-g[k].s, he = altura(g[k].e,mx,22,230), hs = altura(g[k].s,mx,22,230);
+    const vol = (cls,h,v,nom) => `<button class="vol ${cls}${h<70?" short":""}" style="--h:${h}px;--i:${i++}" title="${lab}, ${nom}: ${pref}${fmt(v)}" aria-label="${lab}, ${nom}: ${pref}${fmt(v)}"><span class="v">${pref.trim()} ${corto(v)}</span></button>`;
+    return `<div class="grp"><div class="net">Neto <b class="${n<0?"neg":""}">${n<0?"−":""}${corto(Math.abs(n))}</b></div><div class="pair">${vol("",he,g[k].e,"entradas")}${vol("out",hs,g[k].s,"salidas")}</div><div class="lab">${lab}</div></div>`;
+  }).join("");
+}
+function pilasCat(){
+  const g = {}; state.tx.filter(t=>t.tipo==="salida").forEach(t=>{ g[t.cat]=(g[t.cat]||0)+t.div; });
+  const ks = Object.keys(g).sort((a,b)=>g[b]-g[a]); const tot = ks.reduce((s,k)=>s+g[k],0); const el = $("#pCat");
+  if (!tot){ el.innerHTML = '<p class="empty-pile">Aún no hay salidas registradas.</p>'; return; }
+  const mx = g[ks[0]]; $("#rCat").textContent = "";
+  el.innerHTML = ks.map((k,i)=>{ const h = altura(g[k],mx,140,250);
+    return `<button class="vol cat" style="--h:${h}px;--i:${i}" title="${esc(k)}: ${fD(g[k])} (${fmt(g[k]/tot*100,1)} %)" aria-label="${esc(k)}: ${fD(g[k])}, ${fmt(g[k]/tot*100,1)} % de las salidas"><span class="nm">${esc(k)}</span><span class="pc">${fmt(g[k]/tot*100,0)} %</span></button>`; }).join("");
+}
+
+/* ---------- Tablas de movimientos ---------- */
+function head(actions){
+  return `<thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Moneda</th><th class="n">Divisas</th><th class="n">Tasa</th><th class="n">Bs</th><th class="n">Dif. vs BCV</th><th>Observaciones</th>${actions?"<th></th>":""}</tr></thead>`;
+}
+function row(t,c,actions,q){
+  const imp = c.impTx[t.id]||0;
+  let obs = esc(t.obs);
+  if (q) obs = obs.replace(new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi"),"<mark>$1</mark>");
+  return `<tr><td>${fDate(t.fecha)}</td>
+    <td><span class="tag ${t.tipo==="entrada"?"in":"out"}">${t.tipo==="entrada"?"Entrada":"Salida"}</span></td>
+    <td>${esc(t.cat)}</td><td>${t.liq==="bs"?"Bs":"Divisas"}</td>
+    <td class="n">${fmt(t.div)}</td><td class="n">${fmt(t.tasa,2)}</td><td class="n">${fmt(t.bs)}</td>
+    <td class="n ${imp<-0.005?"neg":imp>0.005?"pos":""}">${t.liq==="bs"?fmt(imp):"–"}</td>
+    <td class="obs">${obs||"<span style='color:var(--muted)'>–</span>"}</td>
+    ${actions?`<td style="white-space:nowrap"><button class="btn sm" data-edit="${t.id}">Editar</button> <button class="btn sm danger" data-del="${t.id}">Eliminar</button></td>`:""}</tr>`;
+}
+function filtrados(){
+  const q = $("#qText").value.trim().toLowerCase(), tp = $("#qTipo").value, ct = $("#qCat").value, d1 = $("#qDesde").value, d2 = $("#qHasta").value;
+  return [...state.tx].filter(t =>
+    (!q || (t.obs||"").toLowerCase().includes(q) || t.cat.toLowerCase().includes(q)) &&
+    (!tp || t.tipo===tp) && (!ct || t.cat===ct) && (!d1 || t.fecha>=d1) && (!d2 || t.fecha<=d2)
+  ).sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.id.localeCompare(a.id));
+}
+function renderMov(c){
+  const cats = [...new Set([...DEFAULT_CATS, ...state.tx.map(t=>t.cat)])].sort((a,b)=>a.localeCompare(b,"es"));
+  $("#dlCats").innerHTML = cats.map(x=>`<option value="${esc(x)}">`).join("");
+  const sel = $("#qCat").value;
+  $("#qCat").innerHTML = `<option value="">Todas las categorías</option>`+[...new Set(state.tx.map(t=>t.cat))].sort().map(x=>`<option ${x===sel?"selected":""}>${esc(x)}</option>`).join("");
+  const rows = filtrados(), q = $("#qText").value.trim();
+  $("#fCount").textContent = rows.length+" de "+state.tx.length+" movimientos";
+  if (!rows.length){ $("#tMov").innerHTML = `<tbody><tr><td class="empty">${state.tx.length?"Ningún movimiento coincide con los filtros.":"Aún no hay movimientos registrados."}</td></tr></tbody>`; return; }
+  let e=0,s=0,eb=0,sb=0,im=0;
+  rows.forEach(t=>{ if(t.tipo==="entrada"){e+=t.div;eb+=t.bs}else{s+=t.div;sb+=t.bs} im+=c.impTx[t.id]||0; });
+  $("#tMov").innerHTML = head(true)+"<tbody>"+rows.map(t=>row(t,c,true,q)).join("")+"</tbody>"+
+    `<tfoot><tr><td colspan="4">Neto filtrado</td><td class="n">${fmt(e-s)}</td><td></td><td class="n">${fmt(eb-sb)}</td><td class="n ${im<0?"neg":"pos"}">${fmt(im)}</td><td colspan="2"></td></tr></tfoot>`;
+}
+
+/* ---------- Tasas ---------- */
+function renderTasas(c){
+  const t = tasasOrd();
+  if (!t.length){ $("#tRates").innerHTML = `<tbody><tr><td class="empty">Registra la tasa BCV del día para empezar a medir la variación.</td></tr></tbody>`; }
+  else {
+    const map = Object.fromEntries(c.serie.map(s=>[s.fecha,s]));
+    let prev = null;
+    $("#tRates").innerHTML = `<thead><tr><th>Fecha</th><th class="n">BCV</th><th class="n">Var. Bs</th><th class="n">Var. %</th><th class="n">Saldo Bs expuesto</th><th class="n">Pérd. tenencia</th><th class="n">Dif. movimientos</th><th class="n">Total día</th><th class="n">Acumulada</th><th class="n">Total día Bs</th><th class="n">Paralela (ref.)</th><th></th></tr></thead><tbody>`+
+      t.map(r=>{ const s = map[r.fecha]||{ten:0,trx:0,total:0,acc:null,saldoBs:null}; const vb = prev? r.bcv-prev.bcv : 0, vp = prev? (r.bcv/prev.bcv-1)*100 : 0; prev = r;
+        return `<tr><td>${fDate(r.fecha)}</td><td class="n">${fmt(r.bcv,4)}</td><td class="n">${fmt(vb,4)}</td><td class="n">${fmt(vp,2)}%</td><td class="n">${s.saldoBs==null?"–":fmt(s.saldoBs)}</td>
+        <td class="n ${s.ten<-0.0049?"neg":""}">${fmt(s.ten)}</td><td class="n ${s.trx<-0.0049?"neg":""}">${fmt(s.trx)}</td><td class="n ${s.total<-0.0049?"neg":""}">${fmt(s.total)}</td>
+        <td class="n">${s.acc==null?"–":fmt(s.acc)}</td><td class="n">${fmt(s.total*r.bcv)}</td><td class="n">${r.par?fmt(r.par):"–"}</td><td><button class="btn sm danger" data-delr="${r.fecha}">Eliminar</button></td></tr>`; }).reverse().join("")+"</tbody>";
+  }
+  if (typeof Chart !== "undefined") chartRates();
+}
+
+function keyPer(f){
+  if (ui.per==="mes") return f.slice(0,7);
+  const d = new Date(f+"T00:00:00"); const wd = (d.getDay()+6)%7; d.setDate(d.getDate()-wd); return iso(d);
+}
+/* ---------- Gráficos (Chart.js) ---------- */
+function baseOpts(extra){
+  const ink = css("--m"), line = css("--b");
+  return Object.assign({ responsive:true, maintainAspectRatio:false, interaction:{mode:"index",intersect:false}, animation: reduce?false:{duration:700,easing:"easeOutCubic"},
+    plugins:{ legend:{ labels:{ color:ink, usePointStyle:true, pointStyle:"rectRounded", font:{family:FONT,weight:"600"} } },
+      tooltip:{ backgroundColor:css("--c"), titleColor:css("--t"), bodyColor:css("--t"), borderColor:line, borderWidth:1, padding:10, titleFont:{family:FONT,weight:"700"}, bodyFont:{family:FONT} } },
+    scales:{ x:{ ticks:{color:ink,font:{family:FONT},maxRotation:0,autoSkipPadding:14}, grid:{display:false}, border:{color:line} },
+             y:{ ticks:{color:ink,font:{family:FONT}}, grid:{color:line}, border:{display:false} } } }, extra||{});
+}
+const FONT = getComputedStyle(document.body).fontFamily;
+if (typeof Chart !== "undefined"){ Chart.defaults.locale = "es-VE"; Chart.defaults.font.family = FONT; }
+function mk(id, cfg){ if (charts[id]) charts[id].destroy(); const el = document.getElementById(id); if (!el || !el.offsetParent) return; charts[id] = new Chart(el, cfg); }
+/* Relleno con canto: degradado vertical que da volumen sin perspectiva */
+function volumen(ctx, color){ const {chart} = ctx; const a = chart.chartArea; if (!a) return color;
+  const g = chart.ctx.createLinearGradient(0,a.top,0,a.bottom); g.addColorStop(0,color); g.addColorStop(1,color+"55"); return g; }
+function chartLoss(c){
+  const y = css("--y"), out = css("--out");
+  mk("cLoss",{ data:{ labels:c.serie.map(s=>fDate(s.fecha).slice(0,5)), datasets:[
+    {type:"line", label:"Pérdida acumulada", data:c.serie.map(s=>-s.acc), borderColor:y, borderWidth:3, backgroundColor:ctx=>volumen(ctx, y), fill:"origin", tension:.3, pointRadius:0, order:2},
+    {type:"bar", label:"Pérdida del día", data:c.serie.map(s=>-s.total), backgroundColor:c.serie.map(s=>-s.total>=0?out:css("--in")), borderRadius:3, order:1}
+  ]}, options: baseOpts({ scales:{ x:{ticks:{color:css("--m"),maxRotation:0,autoSkipPadding:18},grid:{display:false}}, y:{ticks:{color:css("--m"),callback:v=>fmt(v,0)},grid:{color:css("--b")},border:{display:false}} } }) });
+}
+function chartRates(){
+  const t = tasasOrd();
+  const ds = [
+    {type:"line", label:"BCV", data:t.map(r=>r.bcv), borderColor:css("--in"), backgroundColor:ctx=>volumen(ctx, css("--in-l")), fill:"start", borderWidth:3, pointRadius:0, tension:.25, yAxisID:"y"},
+    {type:"bar", label:"Variación diaria BCV %", data:t.map((r,i)=> i? (r.bcv/t[i-1].bcv-1)*100 : 0), backgroundColor:css("--y"), borderRadius:3, yAxisID:"y1"}
+  ];
+  if (t.some(r=>r.par)) ds.push({type:"line", label:"Paralela (referencia)", data:t.map(r=>r.par||null), borderColor:css("--m"), borderDash:[5,4], pointRadius:0, tension:.2, spanGaps:true, yAxisID:"y"});
+  mk("cRates",{ data:{ labels:t.map(r=>fDate(r.fecha).slice(0,5)), datasets:ds },
+    options: baseOpts({ scales:{ x:{ticks:{color:css("--m"),maxRotation:0,autoSkipPadding:18},grid:{display:false}}, y:{position:"left",ticks:{color:css("--m"),callback:v=>fmt(v,0)},grid:{color:css("--b")},title:{display:true,text:"Bs por divisa",color:css("--m")}},
+    y1:{position:"right",ticks:{color:css("--gap"),callback:v=>fmt(v,2)+" %"},grid:{drawOnChartArea:false}} } }) });
+}
+function noCharts(){ ["cLoss","cRates"].forEach(id=>{ const el=document.getElementById(id); if(el) el.parentElement.innerHTML='<div class="nochart">Este gráfico necesita conexión a internet la primera vez que abres el archivo.</div>'; }); }
+
+/* ---------- Render global ---------- */
+function render(){
+  const c = calcular();
+  renderDash(c); renderMov(c); renderTasas(c);
+}
+
+/* ---------- Formulario de movimientos ---------- */
+function proponerTasa(){
+  const r = tasaDe($("#tFecha").value || hoy()); if (!r) return;
+  $("#tTasa").value = $("#tLiq").value==="bs" ? r.bcv : (r.par||r.bcv); recalc();
+}
+function recalc(){
+  const tasa = num($("#tTasa").value); if (!tasa) return;
+  if (ui.lastEdited==="div" && $("#tDiv").value!=="") $("#tBs").value = (num($("#tDiv").value)*tasa).toFixed(2);
+  else if (ui.lastEdited==="bs" && $("#tBs").value!=="") $("#tDiv").value = (num($("#tBs").value)/tasa).toFixed(2);
+}
+function resetForm(){
+  ui.editId = null; $("#fTx").reset(); $("#tFecha").value = hoy();
+  $("#fTxTitle").textContent = "Registrar movimiento"; $("#tSave").textContent = "Guardar movimiento"; $("#tCancel").hidden = true;
+  proponerTasa();
+}
+$("#tDiv").addEventListener("input", ()=>{ ui.lastEdited="div"; recalc(); });
+$("#tBs").addEventListener("input", ()=>{ ui.lastEdited="bs"; recalc(); });
+$("#tTasa").addEventListener("input", recalc);
+$("#tFecha").addEventListener("change", proponerTasa);
+$("#tLiq").addEventListener("change", proponerTasa);
+$("#useBcv").onclick = ()=>{ const r=tasaDe($("#tFecha").value||hoy()); if(r){ $("#tTasa").value=r.bcv; recalc(); } else alert("No hay tasas registradas todavía."); };
+$("#usePar").onclick = ()=>{ const r=tasaDe($("#tFecha").value||hoy()); if(r && r.par){ $("#tTasa").value=r.par; recalc(); } else alert("No hay tasa paralela registrada para esa fecha."); };
+$("#tCancel").onclick = resetForm;
+$("#fTx").addEventListener("submit", e=>{
+  e.preventDefault();
+  const tasa = num($("#tTasa").value); let div = num($("#tDiv").value), bs = num($("#tBs").value);
+  if (tasa<=0) return alert("Indica la tasa aplicada.");
+  if (!div && bs) div = bs/tasa; if (!bs && div) bs = div*tasa;
+  if (div<=0) return alert("Indica un monto en divisas o en Bs.");
+  const t = { id: ui.editId||uid(), fecha:$("#tFecha").value, tipo:$("#tTipo").value, cat:$("#tCat").value.trim()||"Otros",
+    liq:$("#tLiq").value, div:+div.toFixed(2), tasa, bs:+bs.toFixed(2), obs:$("#tObs").value.trim() };
+  if (ui.editId) state.tx = state.tx.map(x=>x.id===ui.editId?t:x); else state.tx.push(t);
+  save(); resetForm(); render();
+});
+$("#tMov").addEventListener("click", e=>{
+  const ed = e.target.dataset.edit, dl = e.target.dataset.del;
+  if (dl && confirm("¿Eliminar este movimiento?")){ state.tx = state.tx.filter(t=>t.id!==dl); save(); render(); }
+  if (ed){ const t = state.tx.find(x=>x.id===ed); if(!t) return; ui.editId = ed;
+    $("#tFecha").value=t.fecha; $("#tTipo").value=t.tipo; $("#tCat").value=t.cat; $("#tLiq").value=t.liq;
+    $("#tDiv").value=t.div; $("#tTasa").value=t.tasa; $("#tBs").value=t.bs; $("#tObs").value=t.obs; ui.lastEdited="div";
+    $("#fTxTitle").textContent="Editar movimiento"; $("#tSave").textContent="Guardar cambios"; $("#tCancel").hidden=false;
+    $("#fTx").scrollIntoView({behavior:"smooth"}); }
+});
+["#qText","#qTipo","#qCat","#qDesde","#qHasta"].forEach(s=>$(s).addEventListener("input", ()=>renderMov(calcular())));
+
+/* ---------- Tasa del día en línea ---------- */
+async function getJSON(url){
+  const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 9000);
+  try { const r = await fetch(url,{cache:"no-store",signal:ctl.signal}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); }
+  finally { clearTimeout(to); }
+}
+const precio = o => { if(!o) return 0; for (const k of ["promedio","price","precio","venta","value"]) { const v = parseFloat(o[k]); if (v>0) return v; } return 0; };
+const FUENTES = {
+  "$": [
+    { nombre:"DolarApi", leer: async()=>{ const d = await getJSON("https://ve.dolarapi.com/v1/dolares");
+        return { bcv: precio(d.find(x=>/oficial|bcv/i.test(x.fuente||x.nombre||""))), par: precio(d.find(x=>/paralel/i.test(x.fuente||x.nombre||""))) }; } },
+    { nombre:"PyDolarVe", leer: async()=>{
+        const [a,b] = await Promise.allSettled([
+          getJSON("https://pydolarve.org/api/v2/dollar?page=bcv&monitor=usd"),
+          getJSON("https://pydolarve.org/api/v2/dollar?page=enparalelovzla&monitor=enparalelovzla")]);
+        return { bcv: a.status==="fulfilled"?precio(a.value):0, par: b.status==="fulfilled"?precio(b.value):0 }; } }
+  ],
+  "€": [
+    { nombre:"DolarApi", leer: async()=>{ const d = await getJSON("https://ve.dolarapi.com/v1/euros");
+        const arr = Array.isArray(d)?d:[d];
+        return { bcv: precio(arr.find(x=>/oficial|bcv/i.test(x.fuente||x.nombre||""))||arr[0]), par: precio(arr.find(x=>/paralel/i.test(x.fuente||x.nombre||""))) }; } },
+    { nombre:"PyDolarVe", leer: async()=>{ const d = await getJSON("https://pydolarve.org/api/v2/dollar?page=bcv&monitor=eur"); return { bcv: precio(d), par: 0 }; } }
+  ]
+};
+function avisar(msg){ ["#rStatus","#gStatus"].forEach(s=>{ const el=$(s); if(el) el.textContent = msg; }); }
+async function traerTasa(){
+  const btns = document.querySelectorAll("[data-fetch-rate]");
+  btns.forEach(b=>{ b.disabled = true; b.textContent = "Consultando…"; });
+  avisar("");
+  let res = { bcv:0, par:0 }, usadas = [];
+  for (const f of FUENTES[state.cfg.div] || FUENTES["$"]) {
+    if (res.bcv && res.par) break;
+    try { const r = await f.leer(); let usada = false;
+      if (!res.bcv && r.bcv>0){ res.bcv = r.bcv; usada = true; }
+      if (!res.par && r.par>0){ res.par = r.par; usada = true; }
+      if (usada) usadas.push(f.nombre);
+    } catch(e){ /* se intenta la siguiente fuente */ }
+  }
+  btns.forEach(b=>{ b.disabled = false; b.textContent = "Traer tasa del día"; });
+  if (!res.bcv && !res.par){
+    avisar("No se pudo consultar la tasa en línea. Revisa tu conexión o regístrala a mano en la pestaña Tasas BCV.");
+    return;
+  }
+  $("#rFecha").value = hoy();
+  if (res.bcv) $("#rBcv").value = res.bcv.toFixed(4);
+  if (res.par) $("#rPar").value = res.par.toFixed(4);
+  if (res.bcv){
+    state.tasas = state.tasas.filter(t=>t.fecha!==hoy()).concat({ fecha:hoy(), bcv:+res.bcv.toFixed(4), par: res.par?+res.par.toFixed(4):null });
+    save(); render(); proponerTasa();
+    const c = calcular();
+    avisar("BCV del "+fDate(hoy())+" guardado: "+fmt(res.bcv,4)+(c.prev?" ("+(c.varPct>=0?"+":"")+fmt(c.varPct,2)+"% vs. "+fDate(c.prev.fecha)+")":"")+(res.par?". Paralela de referencia: "+fmt(res.par):"")+". Fuente: "+usadas.join(" y ")+".");
+    $("#rBcv").value=""; $("#rPar").value="";
+  } else {
+    goTab("tasas"); $("#rBcv").focus();
+    avisar("No se obtuvo la tasa BCV en línea. Escríbela a mano y pulsa Guardar tasas.");
+  }
+}
+document.querySelectorAll("[data-fetch-rate]").forEach(b=>b.addEventListener("click", traerTasa));
+
+/* ---------- Formulario de tasas ---------- */
+$("#fRate").addEventListener("submit", e=>{
+  e.preventDefault();
+  const f=$("#rFecha").value, bcv=num($("#rBcv").value), par=num($("#rPar").value);
+  if (bcv<=0) return alert("La tasa BCV debe ser mayor que cero.");
+  state.tasas = state.tasas.filter(t=>t.fecha!==f).concat({fecha:f,bcv,par: par>0?par:null});
+  save(); $("#rBcv").value=""; $("#rPar").value=""; render(); proponerTasa();
+});
+$("#tRates").addEventListener("click", e=>{ const f=e.target.dataset.delr; if(f && confirm("¿Eliminar las tasas del "+fDate(f)+"?")){ state.tasas=state.tasas.filter(t=>t.fecha!==f); save(); render(); } });
+
+/* ---------- Pestañas y controles ---------- */
+function goTab(name, foco){
+  document.querySelectorAll("nav.tabs button").forEach(b=>{ const on=b.dataset.tab===name; b.setAttribute("aria-selected", on); b.tabIndex = on?0:-1; if(on&&foco) b.focus(); });
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on", p.id==="p-"+name));
+  render();
+}
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
+["#pFlujo","#pCat"].forEach(id=>$(id).addEventListener("click", e=>{ const b=e.target.closest(".vol"); if(!b) return;
+  const box=$(id); const was=b.classList.contains("sel"); box.querySelectorAll(".vol.sel").forEach(x=>x.classList.remove("sel"));
+  const out=$(id==="#pFlujo"?"#rFlujo":"#rCat"); if(was){ out.textContent=""; return; } b.classList.add("sel"); out.textContent=b.title.charAt(0).toUpperCase()+b.title.slice(1); }));
+$("nav.tabs").addEventListener("keydown", e=>{ if(!["ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return; e.preventDefault();
+  const bs=[...document.querySelectorAll("nav.tabs button")], i=bs.findIndex(b=>b.getAttribute("aria-selected")==="true");
+  const n = e.key==="Home"?0 : e.key==="End"?bs.length-1 : (i+(e.key==="ArrowRight"?1:-1)+bs.length)%bs.length; goTab(bs[n].dataset.tab,true); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") document.querySelectorAll("details.more[open]").forEach(d=>{ d.open=false; d.querySelector("summary").focus(); }); });
+document.addEventListener("click", e=>{ document.querySelectorAll("details.more[open]").forEach(d=>{ if(!d.contains(e.target)||e.target.closest(".menu button")) d.open=false; }); });
+document.querySelectorAll(".cx button").forEach(b=>b.onclick=()=>{ $("#cfgDiv").value=b.dataset.d; $("#cfgDiv").dispatchEvent(new Event("change")); });
+document.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>goTab(b.dataset.goto));
+function seg(id,key){ document.querySelectorAll(id+" button").forEach(b=>b.onclick=()=>{ ui[key]=b.dataset.v;
+  document.querySelectorAll(id+" button").forEach(x=>x.setAttribute("aria-pressed", x===b)); pilasFlujo(); }); }
+seg("#segPer","per"); seg("#segUni","uni");
+$("#cfgDiv").onchange = e=>{ state.cfg.div = e.target.value; save(); syncDiv(); render(); };
+function syncDiv(){ document.querySelectorAll(".cx button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.d===(state.cfg.div||"$"))); }
+const mqDark = matchMedia("(prefers-color-scheme: dark)");
+const temaActual = () => document.documentElement.dataset.theme || (mqDark.matches ? "dark" : "light");
+function syncTema(){ const osc = temaActual()==="dark", txt = osc ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
+  const b = $("#bTema"); b.setAttribute("aria-label", txt); b.title = txt; }
+$("#bTema").onclick = ()=>{ const nuevo = temaActual()==="dark" ? "light" : "dark"; document.documentElement.dataset.theme = nuevo;
+  try{ localStorage.setItem("control_financiero_tema", nuevo); }catch(e){}
+  syncTema(); render(); };
+mqDark.addEventListener("change", ()=>{ syncTema(); render(); });
+syncTema();
+
+/* ---------- Exportar / importar ---------- */
+function bajar(nombre, contenido, tipo){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([contenido],{type:tipo})); a.download = nombre;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+$("#bCsv").onclick = ()=>{
+  const c = calcular(); const q = v => '"'+String(v??"").replace(/"/g,'""')+'"';
+  const lines = [["Fecha","Tipo","Categoria","Liquidado en","Monto divisas","Tasa","Monto Bs","Diferencia vs BCV","Observaciones"].join(";")]
+    .concat(filtrados().map(t=>[t.fecha,t.tipo,q(t.cat),t.liq,fmt(t.div),fmt(t.tasa,4),fmt(t.bs),fmt(c.impTx[t.id]||0),q(t.obs)].join(";")));
+  bajar("movimientos_"+hoy()+".csv", "\ufeff"+lines.join("\n"), "text/csv;charset=utf-8");
+};
+$("#bBackup").onclick = ()=> bajar("respaldo_control_financiero_"+hoy()+".json", JSON.stringify(state,null,1), "application/json");
+$("#fImport").onchange = e=>{
+  const f = e.target.files[0]; if(!f) return; const rd = new FileReader();
+  rd.onload = ()=>{ try{ const d = JSON.parse(rd.result); if(!Array.isArray(d.tx)||!Array.isArray(d.tasas)) throw 0;
+      if(confirm("Esto reemplaza todos los datos actuales por los del respaldo. ¿Continuar?")){ state = { tx:d.tx, tasas:d.tasas, cfg:d.cfg||{div:"$"} }; save(); $("#cfgDiv").value=state.cfg.div; syncDiv(); render(); } }
+    catch(_){ alert("El archivo no es un respaldo válido de este panel."); } e.target.value=""; };
+  rd.readAsText(f);
+};
+$("#bReset").onclick = ()=>{ if(confirm("Se borrarán todos los movimientos y tasas. Descarga un respaldo antes si lo necesitas. ¿Borrar todo?")){ state={tx:[],tasas:[],cfg:state.cfg}; save(); resetForm(); render(); } };
+$("#bDemo").onclick = ()=>{ if(!state.tx.length || confirm("Esto reemplaza tus datos actuales por datos de ejemplo. ¿Continuar?")){ demo(); save(); resetForm(); render(); } };
+$("#bCsv2").onclick = ()=> $("#bCsv").click();
+
+/* ---------- Datos de ejemplo ---------- */
+function demo(){
+  let seed = 7; const rnd = ()=> (seed = (seed*16807)%2147483647)/2147483647;
+  const tx=[], tasas=[]; const start = addDays(hoy(),-74); let bcv=185, par=262;
+  const prov = ["Distribuidora El Llano","Alimentos Lara C.A.","Inversiones Turbio","Comercial Yaracuy"];
+  for (let i=0;i<75;i++){
+    const f = addDays(start,i);
+    if (i){ bcv *= 1+0.0018+rnd()*0.0018; par *= 1+0.003+rnd()*0.005; }
+    tasas.push({ fecha:f, bcv:+bcv.toFixed(2), par:+par.toFixed(2) });
+    const add = (tipo,cat,liq,div,obs)=>{ const ts = liq==="bs"?bcv:par; tx.push({ id:uid()+i, fecha:f, tipo, cat, liq, div:+div.toFixed(2), tasa:+ts.toFixed(2), bs:+(div*ts).toFixed(2), obs }); };
+    if (rnd()<0.85){ const bs = rnd()<0.6; add("entrada","Ventas", bs?"bs":"div", 90+rnd()*260, bs?"Ventas del día por pago móvil y punto, cobradas a tasa BCV":"Ventas del día en efectivo divisas"); }
+    if (rnd()<0.15) add("entrada","Servicios","bs",60+rnd()*120,"Servicio de entrega a cliente, factura #"+(1000+i));
+    if (i%7===2) add("salida","Inventario", rnd()<0.5?"bs":"div", 380+rnd()*420, "Pago a proveedor "+prov[i%4]+", factura #"+(4500+i*3));
+    if (i%15===14) add("salida","Nómina","bs",520,"Pago quincenal de nómina (3 empleados)");
+    if (rnd()<0.25) add("salida","Comida","div",8+rnd()*25,"Almuerzo del personal");
+    if (i%30===5) add("salida","Alquiler","div",350,"Alquiler del local, recibo mensual");
+    if (i%30===10) add("salida","Servicios públicos","bs",45+rnd()*20,"Electricidad, agua e internet");
+  }
+  state.tx = tx; state.tasas = tasas; state.demo = true;
+}
+
+/* ---------- Sincronización con GitHub ---------- */
+const KEY_GH = "control_financiero_github", KEY_SYNC = "control_financiero_sync";
+const leerLS = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) || def; } catch(e){ return def; } };
+const grabarLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+let gh = leerLS(KEY_GH, null);           // { o, r, b, p, t }  (t = token, solo en este dispositivo)
+let sync = leerLS(KEY_SYNC, {});         // { dirty, sha, at }
+let ghOcupado = false;
+const ghListo = () => !!(gh && gh.o && gh.r);
+const ghPuedeEscribir = () => ghListo() && !!gh.t;
+function ghAdivinar(){
+  if (!/\.github\.io$/i.test(location.hostname)) return null;
+  const o = location.hostname.split(".")[0], seg = location.pathname.split("/").filter(Boolean)[0];
+  return { o, r: seg && !/\.html?$/i.test(seg) ? seg : o+".github.io", b:"main", p:"data.json", t:"" };
+}
+const ghUrl = (g, extra) => `https://api.github.com/repos/${encodeURIComponent(g.o)}/${encodeURIComponent(g.r)}${extra||""}`;
+const ghHd = g => Object.assign({ "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" }, g.t ? { "Authorization":"Bearer "+g.t } : {});
+function b64aTexto(b64){ const bin = atob(b64.replace(/\s/g,"")); return new TextDecoder().decode(Uint8Array.from(bin, ch=>ch.charCodeAt(0))); }
+function textoAb64(txt){ const by = new TextEncoder().encode(txt); let s = ""; for (let i=0;i<by.length;i+=0x8000) s += String.fromCharCode.apply(null, by.subarray(i,i+0x8000)); return btoa(s); }
+async function ghError(r){ let m = ""; try { m = (await r.json()).message || ""; } catch(e){}
+  const sinCupo = r.headers.get("x-ratelimit-remaining")==="0";
+  const pista = r.status===401 ? "El token no es válido o venció." : sinCupo ? "Se agotó el límite de consultas de GitHub (60 por hora sin token). Agrega el token o espera unos minutos." : r.status===403 ? "El token no tiene permiso de escritura (Contents: Read and write) en este repositorio." :
+    r.status===404 ? "No se encontró el repositorio, la rama o el archivo. Si el repositorio es privado, hace falta el token." : r.status===409 || r.status===422 ? "GitHub rechazó la versión del archivo; trae los cambios e inténtalo de nuevo." : "";
+  return new Error("GitHub respondió "+r.status+". "+(pista||m)); }
+async function ghLeer(g){
+  const r = await fetch(ghUrl(g, "/contents/"+g.p.split("/").map(encodeURIComponent).join("/")+"?ref="+encodeURIComponent(g.b||"main")), { headers: ghHd(g), cache:"no-store" });
+  if (r.status===404) return { sha:null, data:null };
+  if (!r.ok) throw await ghError(r);
+  const j = await r.json(); let txt;
+  if (j.content) txt = b64aTexto(j.content);
+  else { const rb = await fetch(j.git_url, { headers: ghHd(g), cache:"no-store" }); if (!rb.ok) throw await ghError(rb); txt = b64aTexto((await rb.json()).content); }
+  return { sha:j.sha, data: JSON.parse(txt) };
+}
+async function ghEscribir(g, data, sha){
+  const ahora = new Date(), etiqueta = fDate(iso(ahora))+" "+pad(ahora.getHours())+":"+pad(ahora.getMinutes());
+  const r = await fetch(ghUrl(g, "/contents/"+g.p.split("/").map(encodeURIComponent).join("/")), { method:"PUT", headers: Object.assign({"Content-Type":"application/json"}, ghHd(g)),
+    body: JSON.stringify(Object.assign({ message:"Actualización del panel "+etiqueta, content: textoAb64(JSON.stringify(data,null,1)), branch: g.b||"main" }, sha?{sha}:{})) });
+  if (!r.ok) throw await ghError(r);
+  return (await r.json()).content.sha;
+}
+const datosValidos = d => d && Array.isArray(d.tx) && Array.isArray(d.tasas);
+const paquete = () => ({ tx: state.tx, tasas: state.tasas, cfg: state.cfg });
+function aplicarRemoto(d, sha){
+  state = { tx:d.tx, tasas:d.tasas, cfg: Object.assign({div:"$"}, d.cfg||{}) };
+  save({remoto:true}); sync = { dirty:false, sha: sha||sync.sha||null, at: new Date().toISOString() }; grabarLS(KEY_SYNC, sync);
+  $("#cfgDiv").value = state.cfg.div; syncDiv(); resetForm(); render(); pintarSync();
+}
+function pintarSync(msg, tipo){
+  const b = $("#bSync"), t = $("#syncTxt");
+  b.dataset.estado = !ghListo() ? "off" : ghOcupado ? "busy" : sync.dirty ? "dirty" : "ok";
+  t.textContent = msg || (!ghListo() ? "Conectar GitHub" : ghOcupado ? "Sincronizando…" : sync.dirty ? (ghPuedeEscribir() ? "Guardar en GitHub" : "Cambios solo aquí") : "GitHub al día");
+  b.title = !ghListo() ? "Configura el repositorio donde se guardan los datos" : sync.dirty ? "Hay cambios en este dispositivo que no están en GitHub" : "Los datos coinciden con GitHub"+(sync.at?" ("+new Date(sync.at).toLocaleString("es-VE")+")":"");
+  if (tipo) b.dataset.estado = tipo;
+}
+async function ghTraer(preguntar){
+  if (!ghListo()) return abrirGh();
+  if (preguntar && sync.dirty && !confirm("Tienes cambios en este dispositivo que no están en GitHub. Si traes los datos de GitHub, esos cambios se pierden. ¿Continuar?")) return;
+  ghOcupado = true; pintarSync();
+  try { const { sha, data } = await ghLeer(gh);
+    ghOcupado = false;
+    if (!data){ pintarSync("Aún no hay "+gh.p+" en GitHub", "dirty"); return; }
+    if (!datosValidos(data)) throw new Error("El archivo "+gh.p+" no tiene el formato del panel.");
+    aplicarRemoto(data, sha);
+  } catch(e){ ghOcupado = false; pintarSync(); alert("No se pudieron traer los datos. "+e.message); }
+}
+async function ghGuardar(){
+  if (!ghPuedeEscribir()) return abrirGh();
+  if (state.demo && !confirm("Estos son datos de ejemplo. ¿Publicarlos igual en GitHub?")) return;
+  ghOcupado = true; pintarSync();
+  try {
+    const remoto = await ghLeer(gh);
+    if (remoto.sha && sync.sha && remoto.sha!==sync.sha && !confirm("Alguien guardó otra versión en GitHub desde que trajiste los datos. Si guardas ahora, la reemplazas con la de este dispositivo. ¿Guardar igual?")){ ghOcupado=false; pintarSync(); return; }
+    const sha = await ghEscribir(gh, paquete(), remoto.sha);
+    sync = { dirty:false, sha, at:new Date().toISOString() }; grabarLS(KEY_SYNC, sync);
+    ghOcupado = false; pintarSync();
+  } catch(e){ ghOcupado = false; pintarSync(); alert("No se pudo guardar en GitHub. "+e.message); }
+}
+/* Diálogo de conexión */
+function abrirGh(){
+  const g = gh || ghAdivinar() || { o:"", r:"", b:"main", p:"data.json", t:"" };
+  $("#ghO").value=g.o||""; $("#ghR").value=g.r||""; $("#ghB").value=g.b||"main"; $("#ghP").value=g.p||"data.json"; $("#ghT").value=g.t||"";
+  $("#ghMsg").textContent = gh ? "Conectado a "+gh.o+"/"+gh.r+(gh.t?", con permiso para guardar.":", solo lectura (sin token).") : "";
+  $("#ghOff").hidden = !gh; $("#dGh").showModal();
+}
+$("#fGh").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const g = { o:$("#ghO").value.trim(), r:$("#ghR").value.trim(), b:$("#ghB").value.trim()||"main", p:($("#ghP").value.trim()||"data.json").replace(/^\/+/,""), t:$("#ghT").value.trim() };
+  const msg = $("#ghMsg"), btn = $("#ghOk"); btn.disabled = true; msg.textContent = "Probando la conexión…";
+  try {
+    const r = await fetch(ghUrl(g), { headers: ghHd(g), cache:"no-store" }); if (!r.ok) throw await ghError(r);
+    const repo = await r.json();
+    if (g.t && repo.permissions && !repo.permissions.push) throw new Error("El token puede leer pero no escribir en este repositorio.");
+    gh = g; grabarLS(KEY_GH, gh);
+    const { sha, data } = await ghLeer(gh);
+    $("#dGh").close(); btn.disabled = false;
+    if (!data){ sync.dirty = true; grabarLS(KEY_SYNC, sync); pintarSync();
+      if (g.t && confirm(g.p+" todavía no existe en el repositorio. ¿Crearlo ahora con los datos de este dispositivo?")) ghGuardar(); return; }
+    if (!datosValidos(data)) throw new Error(g.p+" existe pero no tiene el formato del panel.");
+    const local = state.tx.length + state.tasas.length;
+    if (!local || state.demo || !sync.dirty || confirm("GitHub ya tiene datos ("+data.tx.length+" movimientos, "+data.tasas.length+" tasas). ¿Reemplazar los de este dispositivo por los de GitHub? Elige Cancelar para conservar los tuyos y publicarlos después."))
+      aplicarRemoto(data, sha);
+    else { sync.sha = sha; sync.dirty = true; grabarLS(KEY_SYNC, sync); pintarSync(); }
+  } catch(err){ btn.disabled = false; msg.textContent = err.message; }
+});
+$("#ghOff").onclick = ()=>{ if (!confirm("Se borrará la conexión y el token de este dispositivo. Tus datos se quedan aquí y en GitHub. ¿Desconectar?")) return;
+  try{ localStorage.removeItem(KEY_GH); }catch(e){} gh = null; $("#dGh").close(); pintarSync(); };
+$("#ghCancel").onclick = ()=> $("#dGh").close();
+$("#bSync").onclick = ()=>{ if (!ghListo()) return abrirGh(); if (sync.dirty && ghPuedeEscribir()) return ghGuardar(); return ghTraer(true); };
+$("#bGhCfg").onclick = abrirGh; $("#bGhPull").onclick = ()=>ghTraer(true); $("#bGhPush").onclick = ghGuardar;
+addEventListener("beforeunload", e=>{ if (ghPuedeEscribir() && sync.dirty){ e.preventDefault(); e.returnValue = ""; } });
+
+/* ---------- Inicio ---------- */
+const had = load();
+if (sync.dirty===undefined){ sync.dirty = had && !state.demo && (state.tx.length+state.tasas.length)>0; grabarLS(KEY_SYNC, sync); }
+const enLinea = /^https?:$/.test(location.protocol);
+if (!had && !ghListo() && !enLinea) { demo(); save({remoto:true}); }
+$("#banner").style.display = canStore ? "none" : "block";
+$("#cfgDiv").value = state.cfg.div || "$"; syncDiv();
+$("#rFecha").value = hoy();
+resetForm(); render(); pintarSync();
+/* Al abrir: si no hay cambios pendientes aquí, se cargan los datos publicados */
+(async ()=>{
+  if (sync.dirty) return;
+  if (ghListo()) return ghTraer(false);
+  if (!enLinea) return;
+  try { const r = await fetch("data.json", { cache:"no-store" }); if (!r.ok) return; const d = await r.json(); if (datosValidos(d)) aplicarRemoto(d, null); } catch(e){}
+})();
+})();
+</script>
+</body>
+</html>
