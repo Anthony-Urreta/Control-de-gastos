@@ -1,5 +1,19 @@
 {
- "tx": [],
+ "tx": [
+  {
+   "id": "mwfd5ye8tcqb6y",
+   "fecha": "2026-11-13",
+   "tipo": "entrada",
+   "cat": "Cobranza",
+   "liq": "bs",
+   "div": 1,
+   "tasa": 1000,
+   "bs": 1000,
+   "obs": ""
+  }
+ ],
  "tasas": [],
- "cfg": { "div": "$" }
+ "cfg": {
+  "div": "$"
+ }
 }
